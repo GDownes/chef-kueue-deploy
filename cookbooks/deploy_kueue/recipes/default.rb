@@ -1,60 +1,53 @@
-package 'git'
-package 'java-1.7.0-openjdk.x86_64'
-package 'java-1.7.0-openjdk-devel.x86_64'
-package 'gcc'
+package "git"
+package "wget"
 
 git '/tmp/kueue' do
-	repository "git://git.kana.com/git/kueue.git"
+  repository node['deploy-kueue']['kueue-repository-uri']
+  revision node['deploy-kueue']['kueue-repository-revision']
 end
 
-execute "Configure iptables" do
-	command "iptables -I INPUT 1 -p tcp -m state --state NEW -m tcp --dport 9090 -j ACCEPT"
+directory "/home/root/" do
+  recursive true
 end
 
-execute "Update iptables configuration" do
-	command "/sbin/service iptables save"
+file "/home/root/kueue" do
+  content lazy { ::File.open("/tmp/kueue/kueue-distribution/src/dist/script/unix/kueue").read }
+  mode "777"
+  action :create
 end
 
-directory "/data/kueue/" do
-	recursive true
+file "/home/root/kueue-install.sh" do
+  content lazy { ::File.open("/tmp/kueue/kueue-distribution/src/dist/script/unix/kueue-install.sh").read }
+  mode "777"
+  action :create
 end
 
-group "kueue"
-
-user "kueue" do
-	system true
-	gid "kueue"
-	home '/data/kueue'
+file "/home/root/log4j.xml" do
+  content lazy { ::File.open("/tmp/kueue/kueue-distribution/src/dist/script/unix/log4j.xml").read }
+  mode "777"
+  action :create
 end
 
-remote_file "/data/kueue/commons-daemon-1.0.15-src.tar.gz" do
-  source "http://mirror.ox.ac.uk/sites/rsync.apache.org//commons/daemon/source/commons-daemon-1.0.15-src.tar.gz"
+file "/home/root/upgrade-kueue.sh" do
+  content lazy { ::File.open("/tmp/kueue/kueue-distribution/src/dist/script/unix/upgrade-kueue.sh").read }
+  mode "777"
+  action :create
 end
 
-execute "Unpack commons daemon" do
-	command "tar -zxvf /data/kueue/commons-daemon-1.0.15-src.tar.gz -C /data/kueue/"
+execute "Run the deploy script:" do
+  command "sudo /home/root/kueue-install.sh"
+  cwd "/home/root/"
 end
 
-execute "Navigate to commons daemon directory and build" do
-    command "cd /data/kueue/commons-daemon-1.0.15-src/src/native/unix && ./configure --with-java=/usr/lib/jvm/java && make"
+file "/data/kueue/log4j.xml" do
+  content lazy { ::File.open("/home/root/log4j.xml").read }
+  mode "777"
+  action :create
 end
 
-remote_file "/data/kueue/kueue-standalone.jar" do
-  source "http://mirror.ox.ac.uk/sites/rsync.apache.org//commons/daemon/source/commons-daemon-1.0.15-src.tar.gz"
+service "kueue" do
+  supports :status => false, :restart => false, :reload => false
+  action [ :start ]
 end
-
-directory "/var/log/kueue/" do
-	recursive true
-end
-
-# execute "Add kueue service" do
-#     command "/sbin/chkconfig --add kueue"
-# end
-
-# execute "Start kueue service" do
-#     command "/sbin/chkconfig kueue on"
-# end
-
-
 
 
