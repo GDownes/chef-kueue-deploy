@@ -46,8 +46,6 @@ file "/data/kueue/log4j.xml" do
 end
 
 service "kueue" do
-  supports :status => false, :restart => false, :reload => false
-  action [ :start ]
+  action :start
 end
-
 
